@@ -15,6 +15,9 @@ RIGHT_OPTION_KEYCODE = 61  # kVK_RightOption
 DEVICE_LEFT_ALT = 0x00000020
 DEVICE_RIGHT_ALT = 0x00000040
 FLAG_MASK_ALTERNATE = 0x00080000  # kCGEventFlagMaskAlternate
+# kCGEventSourceUserData value on the events this app posts itself (its Cmd+V),
+# so they are never mistaken for the user pressing a key.
+SYNTHETIC_EVENT_TAG = 0x766F6963  # "voic"
 
 # CGEventType values.
 EVENT_LEFT_MOUSE_DOWN = 1
@@ -145,6 +148,11 @@ class RightOptionTap:
             self.resync(
                 Quartz.CGEventSourceFlagsState(Quartz.kCGEventSourceStateCombinedSessionState)
             )
+            return
+        if (
+            Quartz.CGEventGetIntegerValueField(event, Quartz.kCGEventSourceUserData)
+            == SYNTHETIC_EVENT_TAG
+        ):
             return
         keycode = Quartz.CGEventGetIntegerValueField(event, Quartz.kCGKeyboardEventKeycode)
         self.feed(event_type, keycode, Quartz.CGEventGetFlags(event))

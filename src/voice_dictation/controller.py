@@ -90,8 +90,7 @@ class DictationPipeline:
         started = self._clock()
         transcript = self._transcriber.transcribe(audio)
         elapsed = self._clock() - started
-        english = (transcript.language or self._settings.language or "en").startswith("en")
-        text = clean_transcript(transcript.text, remove_fillers=english)
+        text = clean_transcript(transcript.text)
         if self._settings.verbose:
             log.info("Raw transcript: %r -> cleaned: %r", transcript.text, text)
         if not text:

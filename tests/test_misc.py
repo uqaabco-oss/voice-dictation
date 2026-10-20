@@ -22,10 +22,6 @@ def test_single_instance_lock(tmp_path):
     again.close()
 
 
-def test_local_model_directory_is_used_as_is(tmp_path):
-    assert resolve_model_dir(str(tmp_path)) == str(tmp_path)
-
-
 def test_cached_model_skips_network(monkeypatch):
     hub = pytest.importorskip("huggingface_hub")
     calls = []
@@ -56,7 +52,9 @@ def test_missing_model_is_downloaded_once(monkeypatch):
     assert calls == [True, False]
 
 
-def test_transcriber_loads_once_and_passes_options(monkeypatch, tmp_path):
+def test_transcriber_loads_once_and_passes_options(monkeypatch):
+    hub = pytest.importorskip("huggingface_hub")
+    monkeypatch.setattr(hub, "snapshot_download", lambda repo_id, local_files_only=False: "/m")
     calls = []
 
     def fake_transcribe(audio, **kwargs):
@@ -66,14 +64,14 @@ def test_transcriber_loads_once_and_passes_options(monkeypatch, tmp_path):
     monkeypatch.setitem(
         sys.modules, "mlx_whisper", types.SimpleNamespace(transcribe=fake_transcribe)
     )
-    transcriber = WhisperTranscriber(str(tmp_path), language="en")
+    transcriber = WhisperTranscriber("org/model")
     transcriber.load()
     result = transcriber.transcribe(np.ones(16000, dtype=np.float32))
 
-    assert result.text == "hello" and result.language == "en"
+    assert result.text == "hello"
     assert len(calls) == 2  # warm-up, then the real clip
     kwargs = calls[1][1]
-    assert kwargs["path_or_hf_repo"] == str(tmp_path)
+    assert kwargs["path_or_hf_repo"] == "/m"
     assert kwargs["language"] == "en"
     assert kwargs["condition_on_previous_text"] is False
 

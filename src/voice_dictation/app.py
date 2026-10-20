@@ -77,8 +77,8 @@ def run(settings: Settings) -> int:
     signal.signal(signal.SIGINT, lambda *_: stop.set())
     signal.signal(signal.SIGTERM, lambda *_: stop.set())
 
-    sounds = Sounds(settings.sounds)
-    transcriber = WhisperTranscriber(settings.model, settings.language)
+    sounds = Sounds()
+    transcriber = WhisperTranscriber(settings.model)
     paster = ClipboardPaster(restore_delay=settings.clipboard_restore_delay)
     pipeline = DictationPipeline(transcriber, paster, sounds, settings)
     worker = Worker(transcriber, pipeline)

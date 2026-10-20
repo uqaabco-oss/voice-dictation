@@ -70,15 +70,9 @@ _INTRO_WORDS = frozenset(
 )
 
 
-def clean_transcript(text: str, *, remove_fillers: bool = True) -> str:
-    """Return a tidied version of ``text``, or ``""`` if nothing is left.
-
-    Pass ``remove_fillers=False`` for non-English text, where words like "um"
-    can be real words (German "um" means "around").
-    """
-    tokens = _attach_solo_punctuation(text.split())
-    if remove_fillers:
-        tokens = _drop_fillers(tokens)
+def clean_transcript(text: str) -> str:
+    """Return a tidied version of ``text``, or ``""`` if nothing is left."""
+    tokens = _drop_fillers(_attach_solo_punctuation(text.split()))
     tokens = _drop_leading_punctuation(tokens)
     if not tokens:
         return ""

@@ -12,11 +12,8 @@ SAMPLE_RATE = 16_000
 
 @dataclass(frozen=True)
 class Settings:
-    # Hugging Face repo id or local directory with MLX Whisper weights.
+    # Hugging Face repo id of the MLX Whisper weights.
     model: str = DEFAULT_MODEL
-    # Whisper language code; None lets Whisper detect the language.
-    language: str | None = "en"
-    sounds: bool = True
     verbose: bool = False
     # Recordings shorter than this are treated as accidental taps.
     min_hold_seconds: float = 0.3

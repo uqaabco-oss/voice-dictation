@@ -9,30 +9,12 @@ import sys
 from collections.abc import Sequence
 
 from . import __version__, launch_agent
-from .config import DEFAULT_MODEL, Settings
+from .config import Settings
 
 COMMANDS = ("run", "install-launch-agent", "uninstall-launch-agent")
 
 
 def _add_run_options(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--model",
-        default=DEFAULT_MODEL,
-        help="Hugging Face repo or local folder with MLX Whisper weights (default: %(default)s)",
-    )
-    parser.add_argument(
-        "--language",
-        default="en",
-        help="spoken language code such as en, de, ur; 'auto' to detect it (default: %(default)s)",
-    )
-    parser.add_argument("--no-sounds", action="store_true", help="don't play the start/stop sounds")
-    parser.add_argument(
-        "--silence-db",
-        type=float,
-        default=Settings.silence_dbfs,
-        metavar="DB",
-        help="skip recordings quieter than this level in dBFS (default: %(default)s)",
-    )
     parser.add_argument(
         "-v",
         "--verbose",
@@ -63,14 +45,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def settings_from_args(args: argparse.Namespace) -> Settings:
-    language = None if args.language.lower() == "auto" else args.language
-    return Settings(
-        model=args.model,
-        language=language,
-        sounds=not args.no_sounds,
-        verbose=args.verbose,
-        silence_dbfs=args.silence_db,
-    )
+    return Settings(verbose=args.verbose)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

@@ -69,20 +69,16 @@ The cleanup is deterministic and deliberately conservative. It only removes fill
 | `You know what I mean?` | `You know what I mean?` (kept: not a filler here) |
 | `Uh-huh, that's right` | `Uh-huh, that's right.` (kept) |
 
-Filler removal applies to English only. For other languages, only spacing, capitalisation and punctuation are fixed.
+Dictation is English only: speech is transcribed as English and English filler words are always removed.
 
 ### Options
 
 ```text
-uv run voice-dictation [run] [--model MODEL] [--language LANG] [--no-sounds] [--silence-db DB] [-v]
+uv run voice-dictation [run] [-v]
 ```
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `--model` | `mlx-community/whisper-large-v3-turbo` | Any MLX Whisper repo on Hugging Face or a local folder. For example, `mlx-community/whisper-large-v3-turbo-q4` (about 0.5 GB) is smaller and uses less memory. |
-| `--language` | `en` | Spoken language code (`en`, `de`, `ur`...) or `auto` to detect it. A fixed language is more reliable for short clips. |
-| `--no-sounds` | off | Don't play the start, stop and error sounds. |
-| `--silence-db` | `-55` | Skip recordings whose loudest moment is quieter than this many dBFS. Lower it, for example to `-70`, if quiet speech is being skipped. |
 | `-v`, `--verbose` | off | Debug logging, including the raw and cleaned text. Without it, dictated text is never logged. |
 
 ## Start automatically at login (optional)
@@ -92,7 +88,7 @@ uv run voice-dictation install-launch-agent      # accepts the same options as r
 uv run voice-dictation uninstall-launch-agent
 ```
 
-`install-launch-agent` writes `~/Library/LaunchAgents/com.uqaabco.voice-dictation.plist` and starts the agent immediately. From then on it starts at every login, and launchd restarts it if it crashes. Its log is `~/Library/Logs/voice-dictation.log`. Any options you pass, such as `--language auto`, are saved into the agent. The agent runs from this checkout's `.venv`, so keep the folder where it is. Uninstall first if you move it.
+`install-launch-agent` writes `~/Library/LaunchAgents/com.uqaabco.voice-dictation.plist` and starts the agent immediately. From then on it starts at every login, and launchd restarts it if it crashes. It is not restarted after an error exit, such as another copy already running or the model failing to load: check the log, fix the cause, then run `launchctl kickstart -k gui/$(id -u)/com.uqaabco.voice-dictation`. Its log is `~/Library/Logs/voice-dictation.log`. Any options you pass, such as `-v`, are saved into the agent. The agent runs from this checkout's `.venv`, so keep the folder where it is. Uninstall first if you move it.
 
 **The agent needs its own permissions.** It runs without a terminal, so macOS asks about the Python binary it uses instead of your terminal app. The install command prints that binary's path. It looks like `~/.local/share/uv/python/cpython-3.12.*-macos-aarch64-none/bin/python3.12`. In System Settings → Privacy & Security:
 
@@ -114,7 +110,7 @@ While the agent is running, `uv run voice-dictation` in a terminal reports that 
 - **Nothing happens when holding Right Option.** Grant Input Monitoring (see above) and restart the terminal app. In Terminal and iTerm2, also make sure **Secure Keyboard Entry** (in the app menu) is off, because it hides key presses from other apps. A password field has the same effect while it is focused.
 - **Text is not pasted but is on the clipboard.** Grant Accessibility and restart the terminal app.
 - **"The microphone delivered only silence".** If it happens every time, Microphone access is denied for the app running voice-dictation. If it happens only now and then with Bluetooth headphones, the microphone was still starting up.
-- **"Skipped ... too quiet".** The input level was below `--silence-db`. Check the input device in System Settings → Sound → Input, or lower the threshold.
+- **"Skipped ... too quiet".** The input level was below the -55 dBFS silence threshold. Check the input device and its level in System Settings → Sound → Input.
 - **The first word gets cut off with Bluetooth headphones.** AirPods and similar headsets take a moment to switch their microphone on. Wait a beat after the start sound, or choose the Mac's built-in microphone as the input.
 - **Text with Dvorak or other non-QWERTY layouts.** The paste is sent as the key in the QWERTY "V" position with Command. If that pastes the wrong thing, use the "Dvorak - QWERTY ⌘" input source.
 

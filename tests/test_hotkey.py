@@ -129,3 +129,25 @@ def test_callback_reads_real_cgevents():
         ev = event(ev_type, keycode, flags)
         assert tap._callback(None, ev_type, ev, None) is ev
     assert calls == ["press", "release", "press", "chord"]
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="needs macOS Quartz")
+def test_own_cmd_v_does_not_cancel_a_held_dictation():
+    """Pasting the previous dictation while the next one is held must not cancel it."""
+    quartz = pytest.importorskip("Quartz")
+    from voice_dictation.paste import cmd_v_events
+
+    tap, calls = make_tap()
+    press = quartz.CGEventCreateKeyboardEvent(None, RIGHT_OPTION_KEYCODE, True)
+    quartz.CGEventSetType(press, EVENT_FLAGS_CHANGED)
+    quartz.CGEventSetFlags(press, RIGHT)
+    tap._callback(None, EVENT_FLAGS_CHANGED, press, None)
+
+    for ev in cmd_v_events():
+        tap._callback(None, quartz.CGEventGetType(ev), ev, None)
+    assert calls == ["press"]
+
+    user_key = quartz.CGEventCreateKeyboardEvent(None, 14, True)
+    quartz.CGEventSetFlags(user_key, RIGHT)
+    tap._callback(None, EVENT_KEY_DOWN, user_key, None)
+    assert calls == ["press", "chord"]

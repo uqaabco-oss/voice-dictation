@@ -7,6 +7,8 @@ import time
 from collections.abc import Callable
 from typing import Any
 
+from .hotkey import SYNTHETIC_EVENT_TAG
+
 log = logging.getLogger(__name__)
 
 TEXT_TYPE = "public.utf8-plain-text"  # NSPasteboardTypeString
@@ -112,16 +114,29 @@ def _empty_data() -> Any:
     return NSData.data()
 
 
-def post_cmd_v() -> None:
-    """Send Cmd+V to the focused app (needs Accessibility permission)."""
+def cmd_v_events() -> list[Any]:
+    """The key-down and key-up CGEvents for Cmd+V, tagged as posted by this app."""
     import Quartz
 
     source = Quartz.CGEventSourceCreate(Quartz.kCGEventSourceStateHIDSystemState)
+    events = []
     for key_down in (True, False):
         event = Quartz.CGEventCreateKeyboardEvent(source, KEYCODE_V, key_down)
         # Set the flags explicitly so modifiers still held (e.g. Shift) don't turn
         # this into a different shortcut.
         Quartz.CGEventSetFlags(event, Quartz.kCGEventFlagMaskCommand)
+        Quartz.CGEventSetIntegerValueField(
+            event, Quartz.kCGEventSourceUserData, SYNTHETIC_EVENT_TAG
+        )
+        events.append(event)
+    return events
+
+
+def post_cmd_v() -> None:
+    """Send Cmd+V to the focused app (needs Accessibility permission)."""
+    import Quartz
+
+    for event in cmd_v_events():
         Quartz.CGEventPost(Quartz.kCGHIDEventTap, event)
 
 

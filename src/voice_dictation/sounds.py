@@ -13,10 +13,8 @@ ERROR_SOUND = "Basso"
 
 
 class Sounds:
-    def __init__(self, enabled: bool = True) -> None:
+    def __init__(self) -> None:
         self._sounds: dict[str, Any] = {}
-        if not enabled:
-            return
         try:
             from AppKit import NSSound
         except ImportError:

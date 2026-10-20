@@ -3,7 +3,7 @@ import subprocess
 
 import pytest
 
-from voice_dictation import launch_agent
+from voice_dictation import app, launch_agent
 from voice_dictation.launch_agent import LABEL, AgentPaths, build_plist
 
 
@@ -23,34 +23,60 @@ class FakeLaunchctl:
 
 def test_plist_runs_module_at_login(tmp_path):
     log = tmp_path / "x.log"
-    plist = build_plist("/repo/.venv/bin/python", ["--language", "auto"], log)
+    plist = build_plist("/repo/.venv/bin/python", ["-v"], log)
     assert plist["Label"] == LABEL
     assert plist["ProgramArguments"] == [
         "/repo/.venv/bin/python",
         "-m",
         "voice_dictation",
         "run",
-        "--language",
-        "auto",
+        "-v",
     ]
     assert plist["RunAtLoad"] is True
-    assert plist["KeepAlive"] == {"SuccessfulExit": False}
     assert plist["ProcessType"] == "Interactive"
     assert plist["LimitLoadToSessionType"] == "Aqua"
     assert plist["StandardOutPath"] == plist["StandardErrorPath"] == str(log)
     plistlib.dumps(plist)  # serialisable
 
 
+def launchd_relaunches(keep_alive, *, exit_code=0, crashed=False):
+    """launchd's KeepAlive rule for a job that has exited (see launchd.plist(5))."""
+    if keep_alive is True:
+        return True
+    if not isinstance(keep_alive, dict):
+        return False
+    if crashed and keep_alive.get("Crashed") is True:
+        return True
+    if "SuccessfulExit" in keep_alive and not crashed:
+        return keep_alive["SuccessfulExit"] == (exit_code == 0)
+    return False
+
+
+@pytest.mark.parametrize(
+    ("exit_code", "crashed", "expected"),
+    [
+        (0, False, False),  # Ctrl+C or bootout
+        (app.EXIT_ALREADY_RUNNING, False, False),  # another copy holds the lock
+        (1, False, False),  # model failed to load, wrong platform
+        (None, True, True),  # killed by a signal, e.g. a segfault
+    ],
+)
+def test_agent_only_restarts_after_a_crash(tmp_path, exit_code, crashed, expected):
+    plist = plistlib.loads(plistlib.dumps(build_plist("py", [], tmp_path / "x.log")))
+    keep_alive = plist["KeepAlive"]
+    assert launchd_relaunches(keep_alive, exit_code=exit_code, crashed=crashed) is expected
+
+
 def test_install_writes_plist_and_loads_it(tmp_path):
     launchctl = FakeLaunchctl()
     paths = launch_agent.install(
-        "/repo/.venv/bin/python", ["--no-sounds"], home=tmp_path, uid=501, run=launchctl
+        "/repo/.venv/bin/python", ["-v"], home=tmp_path, uid=501, run=launchctl
     )
     assert paths == AgentPaths.for_home(tmp_path)
     assert paths.plist == tmp_path / "Library/LaunchAgents" / f"{LABEL}.plist"
     assert paths.log.parent.is_dir()
     written = plistlib.loads(paths.plist.read_bytes())
-    assert written["ProgramArguments"][-1] == "--no-sounds"
+    assert written["ProgramArguments"][-1] == "-v"
     assert launchctl.calls == [
         ["launchctl", "bootout", f"gui/501/{LABEL}"],
         ["launchctl", "enable", f"gui/501/{LABEL}"],
@@ -72,7 +98,7 @@ def test_install_reports_persistent_failure(tmp_path):
 
 def test_install_replaces_existing_agent(tmp_path):
     launchctl = FakeLaunchctl()
-    launch_agent.install("py", ["--no-sounds"], home=tmp_path, uid=501, run=launchctl)
+    launch_agent.install("py", ["-v"], home=tmp_path, uid=501, run=launchctl)
     paths = launch_agent.install("py", [], home=tmp_path, uid=501, run=launchctl)
     written = plistlib.loads(paths.plist.read_bytes())
     assert written["ProgramArguments"] == ["py", "-m", "voice_dictation", "run"]

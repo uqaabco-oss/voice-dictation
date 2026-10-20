@@ -38,8 +38,9 @@ def build_plist(python: str, run_args: Sequence[str], log_path: Path) -> dict:
         "Label": LABEL,
         "ProgramArguments": [python, "-m", "voice_dictation", "run", *run_args],
         "RunAtLoad": True,
-        # Restart after a crash, but not after a clean exit (Ctrl+C, bootout).
-        "KeepAlive": {"SuccessfulExit": False},
+        # Restart only after a crash (killed by a signal). An error exit, such as
+        # another copy already running or the model failing to load, stays down.
+        "KeepAlive": {"Crashed": True},
         "ThrottleInterval": 30,
         # Interactive: don't let macOS throttle it, it must react to key presses.
         "ProcessType": "Interactive",

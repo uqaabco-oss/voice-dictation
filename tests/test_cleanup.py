@@ -125,13 +125,6 @@ def test_empty_after_cleanup(raw):
     assert clean_transcript(raw) == ""
 
 
-def test_fillers_kept_when_disabled():
-    # German: "um" is a real word ("um fünf Uhr" = "at five o'clock").
-    assert clean_transcript("wir treffen uns um fünf Uhr", remove_fillers=False) == (
-        "Wir treffen uns um fünf Uhr."
-    )
-
-
 def test_is_idempotent():
     samples = [
         "Um, so, uh, I was, you know, thinking we could, um, ship it?",

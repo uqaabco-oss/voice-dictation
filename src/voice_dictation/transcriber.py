@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from pathlib import Path
 
 import numpy as np
 
 from .config import DEFAULT_MODEL, DEFAULT_MODEL_DOWNLOAD, SAMPLE_RATE
+
+LANGUAGE = "en"
 
 log = logging.getLogger(__name__)
 
@@ -16,7 +17,6 @@ log = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class Transcript:
     text: str
-    language: str | None
 
 
 def resolve_model_dir(model: str) -> str:
@@ -25,9 +25,6 @@ def resolve_model_dir(model: str) -> str:
     Once the weights are cached, transcription never touches the network:
     mlx-whisper is handed the local directory instead of the repo id.
     """
-    if Path(model).expanduser().is_dir():
-        return str(Path(model).expanduser())
-
     from huggingface_hub import snapshot_download
     from huggingface_hub.errors import LocalEntryNotFoundError
 
@@ -46,9 +43,8 @@ class WhisperTranscriber:
     the same thread.
     """
 
-    def __init__(self, model: str, language: str | None) -> None:
+    def __init__(self, model: str) -> None:
         self.model = model
-        self.language = language
         self._model_dir: str | None = None
 
     def load(self) -> None:
@@ -66,9 +62,9 @@ class WhisperTranscriber:
         result = mlx_whisper.transcribe(
             audio,
             path_or_hf_repo=self._model_dir,
-            language=self.language,
+            language=LANGUAGE,
             verbose=None,
             # Each dictation is independent; this also avoids repetition loops.
             condition_on_previous_text=False,
         )
-        return Transcript(text=str(result.get("text", "")).strip(), language=result.get("language"))
+        return Transcript(text=str(result.get("text", "")).strip())

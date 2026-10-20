@@ -1,7 +1,6 @@
 import threading
 
 import numpy as np
-import pytest
 
 from voice_dictation.config import SAMPLE_RATE, Settings
 from voice_dictation.controller import DictationController, DictationPipeline, Worker
@@ -48,8 +47,8 @@ class FakeSounds:
 
 
 class FakeTranscriber:
-    def __init__(self, text="um, hello there", language="en"):
-        self.result = Transcript(text, language)
+    def __init__(self, text="um, hello there"):
+        self.result = Transcript(text)
         self.calls = 0
         self.loaded = False
 
@@ -204,16 +203,6 @@ def test_pipeline_signals_paste_failure():
     pipeline, transcriber, paster, sounds = make_pipeline(paster=FakePaster(ok=False))
     pipeline.process(speech())
     assert sounds.played == ["error"]
-
-
-@pytest.mark.parametrize(
-    ("language", "expected"),
-    [("de", "Wir treffen uns um fünf."), ("en", "Wir treffen uns fünf.")],
-)
-def test_fillers_only_removed_for_english(language, expected):
-    transcriber = FakeTranscriber(text="wir treffen uns um fünf", language=language)
-    pipeline, _, paster, _ = make_pipeline(transcriber, settings=Settings(language=None))
-    assert pipeline.process(speech()) == expected
 
 
 # --- Worker --------------------------------------------------------------------

@@ -1,7 +1,7 @@
 import pytest
 
 from voice_dictation import app, cli, launch_agent
-from voice_dictation.config import DEFAULT_MODEL, Settings
+from voice_dictation.config import Settings
 from voice_dictation.launch_agent import AgentPaths
 
 
@@ -15,27 +15,24 @@ def captured_run(monkeypatch):
 def test_no_arguments_runs_with_defaults(captured_run):
     assert cli.main([]) == 0
     assert captured_run == [Settings()]
-    assert captured_run[0].model == DEFAULT_MODEL
-    assert captured_run[0].language == "en"
 
 
-def test_run_options_without_command(captured_run):
-    cli.main(["--no-sounds", "--language", "auto", "--silence-db", "-70", "-v"])
-    settings = captured_run[0]
-    assert settings.sounds is False
-    assert settings.language is None
-    assert settings.silence_dbfs == -70
-    assert settings.verbose is True
+def test_verbose_without_command(captured_run):
+    cli.main(["-v"])
+    assert captured_run == [Settings(verbose=True)]
 
 
 def test_explicit_run_command(captured_run):
-    cli.main(["run", "--model", "/models/whisper"])
-    assert captured_run[0].model == "/models/whisper"
+    cli.main(["run"])
+    assert captured_run == [Settings()]
 
 
-def test_unknown_option_is_rejected(captured_run):
+@pytest.mark.parametrize(
+    "option", ["--bogus", "--model", "--language", "--no-sounds", "--silence-db"]
+)
+def test_unknown_option_is_rejected(captured_run, option):
     with pytest.raises(SystemExit) as exc:
-        cli.main(["--bogus"])
+        cli.main([option, "x"])
     assert exc.value.code == 2
     assert captured_run == []
 
@@ -48,9 +45,9 @@ def test_install_launch_agent_keeps_run_options(monkeypatch, tmp_path, capsys):
         return AgentPaths.for_home(tmp_path)
 
     monkeypatch.setattr(launch_agent, "install", fake_install)
-    assert cli.main(["install-launch-agent", "--language", "auto", "--no-sounds"]) == 0
+    assert cli.main(["install-launch-agent", "-v"]) == 0
     python, run_args = calls[0]
-    assert run_args == ["--language", "auto", "--no-sounds"]
+    assert run_args == ["-v"]
     out = capsys.readouterr().out
     assert "Accessibility and Input Monitoring" in out
     assert "launchctl kickstart -k" in out
